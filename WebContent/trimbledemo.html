@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<link rel="stylesheet" type="text/css" href="css/trimbledemo.css">
+<head>
+<meta charset="UTF-8">
+<title>Trimble File Sync Demo</title>
+<script src="js/jquery-1.11.0.js"></script>
+<script>
+
+$(document).ready(function(){
+    $("#emailInputMessage").hide();
+    $("#serviceList").hide();
+    $("#emailInput").hide();
+    $("#loadingMessage1").hide();
+    $("#loadingMessage2").hide();
+    $("#loadingMessage3").hide();
+    $("#fileListMessage").hide();
+    $("#fileList").hide();
+    $("#nextButton").hide();
+	
+	$("#companyList").change(function() {
+	    $("#emailInputMessage").show();
+	    $("#serviceList").show();
+	    $("#emailInput").show();
+	});
+	
+	$("#emailInput").keyup(function(event){
+	    if(event.keyCode == 13){
+	    	$("#loadingMessage1").show();
+	    	getUser();
+	    }
+	});
+});
+
+function getUser() {
+	var email = $("#emailInput").val();
+	var body = {
+			email: email
+	};
+	
+	var successFunc = function (data, statusText, jqXHR) {
+		getFiles(0);
+	};
+	
+	var errorFunc = function (jqXHR, statusText, errorText) {
+	    addUser();
+	};
+	
+	$.ajax({
+	    type: "POST",
+	    url: "GetUser",
+	    accept: "application/json",
+	    dataType: "json",
+	    data: body,
+	    success: successFunc,
+	    error: errorFunc
+	  });
+}
+
+function addUser() {
+	var companyName = $("#companyList :selected").text();
+	var company = $("#companyList").val();
+	var email = $("#emailInput").val();
+	var n = email.indexOf("@");
+	if (n < 0) {
+		alert("Please provide a valid user email address");
+		return false;
+	}
+	var firstName = email.substring(0,n);
+	var pwd = firstName + "Password";
+	var body = {
+			companyName: companyName,
+			company: company,
+			email: email,
+			password: pwd,
+			phoneNumber: " ",
+			notificationMethod: "email",
+			firstName: firstName,
+			lastName: " "
+	};
+	
+	var successFunc = function (data, statusText, jqXHR) {
+	    fetchAndInjectOAuthJs();
+	};
+	
+	$.ajax({
+	    type: "POST",
+	    url: "AddUser",
+	    contentType: "application/json",
+	    accept: "application/json",
+	    dataType: "json",
+	    data: body,
+	    success: successFunc
+	  });
+}
+
+function fetchAndInjectOAuthJs() {
+	var email = $("#emailInput").val();
+	var service = $("#serviceList").val();
+	var body = {
+			email: email,
+			service: service
+	};
+	
+	var successFunc = function (data, statusText, jqXHR) {
+			injectJs(data);
+			oauthSetup();
+			authenticate(12345);
+	}
+	
+	$.ajax({
+	    type: "POST",
+	    url: "GetOAuthJs",
+	    accept: "text/plain",
+	    data: body,
+	    success: successFunc
+	  });
+}
+
+function injectJs(js) {
+	var scriptText = "";
+	scriptText += "\n<scr" + "ipt>\n";
+	scriptText += js;
+	scriptText += "\n</scr" + "ipt>\n";
+	$("#injectionDiv").html(scriptText);
+}
+
+function registerOAuthPopup(popup) {
+	var poller = setInterval(function() {
+        if (popup.closed !== false) { // !== is required for compatibility with Opera
+            window.clearInterval(poller);
+            getFiles(0);
+        }
+    }, 200);
+	setInterval()
+}
+
+function getFiles(folderId) {
+	var serviceName = $("#serviceList :selected").text();
+	$("#loadingMessage1").hide();
+	$("#loadingMessage2").html("Successfully logged into " + serviceName + ".");
+	$("#loadingMessage2").show();
+	$("#loadingMessage3").show();
+	var service = $("#serviceList").val();
+	var email = $("#emailInput").val();
+	var body = {
+			service: service,
+			email: email,
+			folderId: folderId,
+			remoteAccount: email
+	};
+	
+	var successFunc = function (data, statusText, jqXHR) {
+		var nItems = data.response.length;
+		var results = "";
+		for (var i = 0; i < nItems; i++) {
+			var fileRec = data.response[i];
+			var fileName = fileRec.name;
+			var fileId = fileRec.file_id;
+			var isFolder = fileRec.folder;
+			if ((fileName.toLowerCase() == "deliveries") && isFolder) {
+				getFiles(fileId);
+				return;
+			}
+			results += "<tr><td>" + fileName + "</tr></td>";
+		}
+	    $("#fileList").html(results);
+	    $("#loadingMessage3").hide();
+	    $("#fileListMessage").show();
+	    $("#fileList").show();
+	    $("#nextButton").show();
+	};
+	
+	$.ajax({
+	    type: "POST",
+	    url: "GetFiles",
+	    contentType: "application/json",
+	    accept: "application/json",
+	    dataType: "json",
+	    data: body,
+	    success: successFunc
+	  });
+}
+
+</script>
+</head>
+<body>
+<div>
+<h2>Driver Login</h2>
+Please select a company to begin.<br />
+<select id="companyList">
+	<option>-</option>
+	<option value="truckingcompanya">Trucking Company A</option>
+	<option value="truckingcompanyb">Trucking Company B</option>
+</select><br /><br />
+<div id="emailInputMessage">Now select your cloud storage service<br />and enter your email address to connect.<br /></div>
+<select id="serviceList">
+	<option>-</option>
+	<option value="box">Box</option>
+	<option value="dropbox">Dropbox</option>
+	<option value="google">Google Drive</option>
+</select>&emsp;
+<input id="emailInput" /><br /><br />
+<div id="loadingMessage1">Loading...</div>
+<div id="loadingMessage2"><br /></div>
+<div id="loadingMessage3">Loading your Deliveries folder...<br /></div>
+<div id="fileListMessage">Your Deliveries folder contains the following files:<br /></div>
+<table id="fileList"></table><br /><br />
+<form action="http://test.simpleecm.com/trimbledemo2.html"><button id="nextButton" type="submit">View as Company A admin &#62;</button></form>
+<div id="injectionDiv" ></div></div>
+</body>
+</html>

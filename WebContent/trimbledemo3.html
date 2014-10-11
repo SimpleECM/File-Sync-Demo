@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<link rel="stylesheet" type="text/css" href="css/trimbledemo.css">
+<head>
+<meta charset="UTF-8">
+<title>Trimble File Sync Demo</title>
+<script src="js/jquery-1.11.0.js"></script>
+<script>
+
+var service = "";
+
+$(document).ready(function(){
+	$("#loadingMessage1").hide();
+	$("#userListMessage").hide();
+    $("#userList").hide();
+    $("#loadingMessage2").hide();
+    $("#fileListMessage").hide();
+    $("#fileList").hide();
+    $("#loadingMessage3").hide();
+    $("#doneMessage").hide();
+	
+    $("#companyList").change(function() {
+	    showUsers();
+	});
+    
+	$("#userList").change(function() {
+	    getService();
+	});
+	
+	$("#fileList").change(function() {
+	    syncFile();
+	});
+});
+
+function showUsers() {
+	$("#doneMessage").hide();
+	$("#loadingMessage3").hide();
+	$("#fileListMessage").hide();
+	$("#fileList").hide();
+	$("#userListMessage").hide();
+	$("#userList").hide();
+	$("#loadingMessage1").show();
+	getUsers();
+}
+
+function getUsers() {
+	var company = $("#companyList").val();
+	var body = {
+			company: company
+	};
+	
+	var successFunc = function (data, statusText, jqXHR) {
+		var nItems = data.length;
+		var results = "<option>-</option>";
+		for (var i = 0; i < nItems; i++) {
+			var userRec = data[i];
+			var email = userRec.email;
+			results += "<option>" + email + "</option>";
+		}
+	    $("#userList").html(results);
+	    $("#loadingMessage1").hide();
+	    $("#userListMessage").show();
+	    $("#userList").show();
+	};
+	
+	$.ajax({
+	    type: "POST",
+	    url: "GetUsers",
+	    contentType: "application/json",
+	    accept: "application/json",
+	    dataType: "json",
+	    data: body,
+	    success: successFunc
+	  });
+}
+
+function getService() {
+	$("#doneMessage").hide();
+	$("#loadingMessage3").hide();
+	$("#fileListMessage").hide();
+	$("#fileList").hide();
+	$("#loadingMessage2").show();
+	var email = $("#userList").val();	
+	var body = {
+			email: email
+	};
+	
+	var successFunc = function (data, statusText, jqXHR) {
+		if (data.provider_accounts.hasOwnProperty("google")) {
+			service = "google";
+			getFiles(0);
+		}
+		else if (data.provider_accounts.hasOwnProperty("dropbox")) {
+			service = "dropbox";
+			getFiles(0);
+		}
+		else if (data.provider_accounts.hasOwnProperty("box")) {
+			service = "box";
+			getFiles(0);
+		}
+		else alert("This user has not authorized any storage services.");
+	};
+	
+	$.ajax({
+	    type: "POST",
+	    url: "GetServices",
+	    accept: "application/json",
+	    dataType: "json",
+	    data: body,
+	    success: successFunc
+	  });
+}
+
+function getFiles(folderId) {
+	event.preventDefault();
+	var email = $("#userList").val();
+	var body = {
+			service: service,
+			email: email,
+			folderId: folderId,
+			remoteAccount: email
+	};
+	var successFunc = function (data, statusText, jqXHR) {
+		var nItems = data.response.length;
+		var results = "<option>-</option>";
+		for (var i = 0; i < nItems; i++) {
+			var fileRec = data.response[i];
+			var fileName = fileRec.name;
+			var fileId = fileRec.file_id;
+			var isFolder = fileRec.folder;
+			if ((fileName.toLowerCase() == "deliveries") && isFolder) {
+				getFiles(fileId);
+				return;
+			}
+			results += "<option value='" + fileId + "'>" + fileName + "</option>";
+		}
+	    $("#fileList").html(results);
+	    $("#loadingMessage2").hide();
+	    $("#fileListMessage").show();
+	    $("#fileList").show();
+	};
+	
+	$.ajax({
+	    type: "POST",
+	    url: "GetFiles",
+	    contentType: "application/json",
+	    accept: "application/json",
+	    dataType: "json",
+	    data: body,
+	    success: successFunc
+	  });
+}
+
+function syncFile() {
+	$("#doneMessage").hide();
+	$("#nextButton").hide();
+	$("#loadingMessage3").show();
+	var email = $("#userList").val();
+	var fileId = $("#fileList").val();
+	var fileName = $("#fileList :selected").text();
+	var companyName = $("#companyList").val();
+	var body = {
+			service: service,
+			email: email,
+			fileId: fileId,
+			fileName: fileName,
+			remoteAccount: email,
+			companyName: companyName
+	};
+	var successFunc = function (data, statusText, jqXHR) {
+		
+		$("#loadingMessage3").hide();
+		$("#doneMessage").show();
+		$("#nextButton").show();
+	};
+	
+	$.ajax({
+	    type: "POST",
+	    url: "SyncFile",
+	    contentType: "application/json",
+	    accept: "application/json",
+	    dataType: "json",
+	    data: body,
+	    success: successFunc
+	  });
+}
+</script>
+</head>
+<body>
+<div>
+<h2>Trimble Admin Panel</h2>
+Please select a company.<br />
+<select id="companyList">
+	<option>-</option>
+	<option value="truckingcompanya">Trucking Company A</option>
+	<option value="truckingcompanyb">Trucking Company B</option>
+</select><br /><br />
+<div id="loadingMessage1">Loading...</div>
+<div id="userListMessage">Now select a user below to view the contents<br />of the Deliveries folder on their Google Drive.<br /></div>
+<select id="userList"></select><br /><br />
+<div id="loadingMessage2">Loading...</div>
+<div id="fileListMessage">Now select a file to sync to the<br />company Google Drive account.<br /></div>
+<select id="fileList"></select><br /><br />
+<div id="loadingMessage3">Transferring file...</div>
+<div id="doneMessage">File sync complete.</div><br />
+</div>
+</body>
+</html>

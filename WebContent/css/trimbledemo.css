@@ -1,0 +1,23 @@
+@charset "UTF-8";
+/* CSS Document */
+
+div {
+	font-family:verdana;
+	color:SlateGray;
+}
+
+select {
+	font-family:verdana;
+	color:SlateGray;
+}
+
+table {
+	font-family:verdana;
+	color:SlateGray;
+}
+
+input {
+	font-family:verdana;
+	color:SlateGray;
+	width:200px;
+}
