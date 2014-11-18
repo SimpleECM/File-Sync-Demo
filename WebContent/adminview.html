@@ -1,24 +1,28 @@
 <!DOCTYPE html>
 <html>
-<link rel="stylesheet" type="text/css" href="css/trimbledemo.css">
+<link rel="stylesheet" type="text/css" href="css/filesync.css">
 <head>
 <meta charset="UTF-8">
-<title>Trimble File Sync Demo</title>
+<title>File Sync Demo</title>
 <script src="js/jquery-1.11.0.js"></script>
 <script>
 
 var service = "";
 
 $(document).ready(function(){
-    $("#userListMessage").hide();
+	$("#loadingMessage1").hide();
+	$("#userListMessage").hide();
     $("#userList").hide();
     $("#loadingMessage2").hide();
     $("#fileListMessage").hide();
     $("#fileList").hide();
     $("#loadingMessage3").hide();
     $("#doneMessage").hide();
-    $("#nextButton").hide();
 	
+    $("#companyList").change(function() {
+	    showUsers();
+	});
+    
 	$("#userList").change(function() {
 	    getService();
 	});
@@ -26,13 +30,23 @@ $(document).ready(function(){
 	$("#fileList").change(function() {
 	    syncFile();
 	});
-	
-	getUsers();
 });
 
+function showUsers() {
+	$("#doneMessage").hide();
+	$("#loadingMessage3").hide();
+	$("#fileListMessage").hide();
+	$("#fileList").hide();
+	$("#userListMessage").hide();
+	$("#userList").hide();
+	$("#loadingMessage1").show();
+	getUsers();
+}
+
 function getUsers() {
+	var company = $("#companyList").val();
 	var body = {
-			company: "truckingcompanya"
+			company: company
 	};
 	
 	var successFunc = function (data, statusText, jqXHR) {
@@ -62,7 +76,6 @@ function getUsers() {
 
 function getService() {
 	$("#doneMessage").hide();
-	$("#nextButton").hide();
 	$("#loadingMessage3").hide();
 	$("#fileListMessage").hide();
 	$("#fileList").hide();
@@ -145,13 +158,14 @@ function syncFile() {
 	var email = $("#userList").val();
 	var fileId = $("#fileList").val();
 	var fileName = $("#fileList :selected").text();
+	var companyName = $("#companyList").val();
 	var body = {
 			service: service,
 			email: email,
 			fileId: fileId,
 			fileName: fileName,
 			remoteAccount: email,
-			companyName: "truckingcompanya"
+			companyName: companyName
 	};
 	var successFunc = function (data, statusText, jqXHR) {
 		
@@ -174,16 +188,21 @@ function syncFile() {
 </head>
 <body>
 <div>
-<h2>Admin Panel: Trucking Company A</h2>
+<h2>Admin Panel</h2>
+Please select a company.<br />
+<select id="companyList">
+	<option>-</option>
+	<option value="truckingcompanya">Trucking Company A</option>
+	<option value="truckingcompanyb">Trucking Company B</option>
+</select><br /><br />
 <div id="loadingMessage1">Loading...</div>
-<div id="userListMessage">Select a user below to view the contents of the<br />Deliveries folder on their cloud storage service.<br /></div>
+<div id="userListMessage">Now select a user below to view the contents<br />of the Deliveries folder on their Google Drive.<br /></div>
 <select id="userList"></select><br /><br />
 <div id="loadingMessage2">Loading...</div>
-<div id="fileListMessage">Now select a file to sync to our<br />company Google Drive account.<br /></div>
+<div id="fileListMessage">Now select a file to sync to the<br />company Google Drive account.<br /></div>
 <select id="fileList"></select><br /><br />
 <div id="loadingMessage3">Transferring file...</div>
 <div id="doneMessage">File sync complete.</div><br />
-<form action="http://test.simpleecm.com/trimbledemo3.html"><button id="nextButton" type="submit">View as Trimble admin &#62;</button></form>
 </div>
 </body>
 </html>
